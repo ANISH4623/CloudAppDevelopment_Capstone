@@ -43,6 +43,19 @@
       </div>
     </nav>
     <!--Add a dealer table here -->
+    {%if dealers%}
+    <table class="table">
+      <thead>
+          <tr> {% for dealer in dealers %}
+                <th>{{dealer}}</th>
+                {% endfor %}
+          </tr>
+      </thead>
+      <tbody>
+         
+      </tbody>
+  </table>
+  {% endif %}
 
     </body>
 
