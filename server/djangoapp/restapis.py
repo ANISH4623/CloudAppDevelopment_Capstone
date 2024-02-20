@@ -13,9 +13,12 @@ def get_request(url, **kwargs):
     print(kwargs)
     print("GET from {} ".format(url))
     try:
+        if api_key:
+            params['api_key'] = api_key
         # Call get method of requests library with URL and parameters
-        response = requests.get(url, headers={'Content-Type': 'application/json'},
-                                    params=kwargs)
+        response = requests.get(url, params=params, headers={'Content-Type': 'application/json'},
+                                    auth=HTTPBasicAuth('apikey', api_key))
+        
     except:
         # If any error occurs
         print("Network exception occurred")
@@ -59,21 +62,30 @@ def get_dealers_from_cf(url, **kwargs):
 # def get_dealer_by_id_from_cf(url, dealerId):
 # - Call get_request() with specified arguments
 # - Parse JSON results into a DealerView object list
-def get_dealer_reviews_from_cf(url, dealerId):
-   results = []
-   json_result = get_request(url, dealerId=dealerId)
-   if json_result:
-       reviews = json_result
-       for review in reviews:
-           review_doc = review
-           print("Review",review_doc)
-           # Create a DealerView object with values in `doc` object
-           review_obj = DealerReview(dealership=review_doc["dealership"], name=review_doc["name"], purchase=review_doc["purchase"],
-                                     review=review_doc["review"], purchase_date=review_doc["purchase_date"],
-                                     car_make=review_doc["car_make"], car_model=review_doc["car_model"],
-                                     car_year=review_doc["car_year"], sentiment=review_doc["sentiment"])
-           results.append(review_obj)
-   return results
+def get_dealer_reviews_from_cf(url, dealer_id):
+    results = []
+    # Call get_request with a URL parameter
+    json_result = get_request(url, id=dealer_id)
+    
+    if "entries" in json_result:
+        reviews = json_result["entries"]
+        # For each review object
+        for review in reviews:
+            review_obj = DealerReview(
+                dealership=review["dealership"],
+                name=review["name"],
+                purchase=review["purchase"],
+                review=review["review"],
+                purchase_date=review["purchase_date"],
+                car_make=review["car_make"],
+                car_model=review["car_model"],
+                car_year=review["car_year"],
+                sentiment=analyze_review_sentiments(review["review"]),
+                id=review['id']
+                )
+            results.append(review_obj)
+    #print(results[0])
+    return results
 
 
 
