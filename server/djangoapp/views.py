@@ -9,7 +9,7 @@ from django.contrib import messages
 from datetime import datetime
 import logging
 import json
-from djangoapp.restapis import get_dealers_from_cf,get_dealer_reviews_from_cf
+from djangoapp.restapis import get_dealer_reviews_from_cf, get_dealers_from_cf,get_dealer_by_id
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -79,20 +79,46 @@ def get_dealerships(request):
 # def get_dealer_details(request, dealer_id):
 # ...
 def get_dealer_details(request, dealer_id):
-    context = {}
     if request.method == "GET":
-        url = "http://127.0.0.1:5000/api/get_reviews"
-        dealer_details = get_dealer_reviews_from_cf(url, dealer_id)
-        context["dealer_id"] = dealer_details
-        context["reviews"] = dealer_details
-        print(dealer_details)
-        return render(request,'djangoapp/dealer_details.html',context)
-
+        url_ds = "http://127.0.0.1:3000/dealerships/get?id={}".format(dealer_id)
+        url_r = "http://127.0.0.1:5000/api/get_reviews?id={}".format(dealer_id)
+        # Get dealers from the URL
+        context = {
+            "dealer": get_dealers_from_cf(url_ds)[0],
+            "reviews": get_dealer_reviews_from_cf(url_r, dealer_id),
+        }
+        return render(request, 'djangoapp/dealer_details.html', context)
 
 
 # Create a `add_review` view to submit a review
 # def add_review(request, dealer_id):
 # ...
 def add_review(request, dealer_id):
-    pass
+    if request.method == "GET":
+        url = "http://127.0.0.1:3000/dealerships/get?id={}".format(dealer_id)
+        # Get dealers from the URL
+        context = {
+            "cars": CarModel.objects.all(),
+            "dealer": get_dealers_from_cf(url)[0],
+        }
+        print(context)
+        return render(request, 'djangoapp/add_review.html', context)
+    if request.method == "POST":
+        form = request.POST
+        review = {
+            "name": f"{request.user.first_name} {request.user.last_name}",
+            "dealership": dealer_id,
+            "review": form["content"],
+            "purchase": form.get("purchasecheck"),
+            }
+        if form.get("purchasecheck"):
+            review["purchasedate"] = datetime.strptime(form.get("purchasedate"), "%m/%d/%Y").isoformat()
+            car = CarModel.objects.get(pk=form["car"])
+            review["car_make"] = car.car_make.name
+            review["car_model"] = car.name
+            review["car_year"]= car.year.strftime("%Y")
+        json_payload = {"review": review}
+        URL ='http://127.0.0.1:5000/api/post_reviews'
+        post_request(URL, json_payload, dealerId=dealer_id)
+    return redirect("djangoapp:dealer_details", dealer_id=dealer_id)
 
